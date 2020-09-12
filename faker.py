@@ -31,14 +31,12 @@ for seeder in seeders:
 p.close()
 p.join()
 
-time.sleep(60)
 while True:
+    time.sleep(900)
     # 根据种子总数,决定每个种子的延迟数量.
+    p = multiprocessing.Pool(processes=10)
     for seeder in seeders:
-        p = multiprocessing.Pool(processes=10)
-        for seeder in seeders:
-            p.apply_async(seeder.heartbeat)
-        p.close()
-        p.join()
+        p.apply_async(seeder.heartbeat)
+    p.close()
+    p.join()
 
-        time.sleep(600)
