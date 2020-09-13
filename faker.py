@@ -20,23 +20,29 @@ collection = db['seeder']
 
 seeders = list()
 cursor = collection.find({})
+
 for document in cursor:
     f = torrent.FileCache(document['announce'], pickle.loads(document["file_hash"]))
     s = torrent.Seeder(f, 49152, 'qB4250', 'qBittorrent/4.2.5')
     seeders.append(s)
 
-p = multiprocessing.Pool(processes=10)
+p = multiprocessing.Pool(processes=16)
 for seeder in seeders:
     p.apply_async(seeder.start)
 p.close()
 p.join()
 
+# for seeder in seeders:
+#     seeder.start()
+
 while True:
     time.sleep(900)
-    # 根据种子总数,决定每个种子的延迟数量.
-    p = multiprocessing.Pool(processes=10)
+    # 能适配大多数PT站的配置!
+    p = multiprocessing.Pool(processes=16)
     for seeder in seeders:
         p.apply_async(seeder.heartbeat)
     p.close()
     p.join()
 
+    # for seeder in seeders:
+    #     seeder.heartbeat()
