@@ -76,6 +76,12 @@ class QBAgent:
             self.destination, self.free_space_on_task, self.free_space_on_disk, self.alltime_ul, self.alltime_dl,
             self.up_info_speed, self.dl_info_speed, self.disk_latency))
 
+        #如果出现严重的意外,比如磁盘突发为0B实际空间,强制执行清理以便纠正.(Virtono经常发生磁盘回报问题)
+        if self.free_space_on_disk < 0.1:
+            torrents = self.QBClient.torrents_info(status_filter='all', SIMPLE_RESPONSES=True)
+            for t in torrents:
+                self.QBClient.torrents_delete(hashes=t['hash'], deleteFiles=True)
+
     def add(self, torrent_name, torrent_size, urls, category):
         if int(torrent_size) < (self.free_space_on_task * 1024 * 1024 * 1024) and self.dl_info_speed < (
                 self.bandwidth / 2):
