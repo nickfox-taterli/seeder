@@ -12,6 +12,7 @@ import honeybadger
 class QBAgent:
     def __init__(self, destination='127.0.0.1', port=8080, username='admin', password='adminadmin', quota=0,
                  resevred=5.0, bandwidth=10):
+
         self.QBClient = qbittorrentapi.Client(host=destination + ':' + str(port), username=username, password=password)
         self.QBClient.auth_log_in()
 
@@ -43,6 +44,7 @@ class QBAgent:
             print('[' + self.destination + ']自动计算全盘空间:' + str(self.quota) + ' GB')
 
     def query(self):
+
         torrents = self.QBClient.torrents_info(status_filter='all', SIMPLE_RESPONSES=True)
 
         total_size = (self.quota) * 1024 * 1024 * 1024
@@ -76,7 +78,7 @@ class QBAgent:
             self.destination, self.free_space_on_task, self.free_space_on_disk, self.alltime_ul, self.alltime_dl,
             self.up_info_speed, self.dl_info_speed, self.disk_latency))
 
-        #如果出现严重的意外,比如磁盘突发为0B实际空间,强制执行清理以便纠正.(Virtono经常发生磁盘回报问题)
+        #如果出现严重的意外,比如磁盘突发为0B实际空间,强制执行清理以便纠正.(如果经常发生,则可能有其他BUG)
         if self.free_space_on_disk < 0.1:
             torrents = self.QBClient.torrents_info(status_filter='all', SIMPLE_RESPONSES=True)
             for t in torrents:
@@ -92,6 +94,7 @@ class QBAgent:
             return False
 
     def purge(self,db):
+
         torrents = self.QBClient.torrents_info(status_filter='all', SIMPLE_RESPONSES=True)
 
         total_size = (self.quota) * 1024 * 1024 * 1024
@@ -106,7 +109,7 @@ class QBAgent:
                     # 提取hash来查询文件,并把查询结果塞到seeder的队列里面.
                     cursor = db['agent'].find_one({"id": t['hash']})
                     if cursor is not None:
-                        print('[' + self.destination + ']请求下载:' + f.name)
+                        print('[' + self.destination + ']请求下载:' + cursor['title'])
                         r = requests.get(cursor['links'][1]['href'])
                         if r.status_code == 200:
                             with open('/tmp/temp.torrent', 'wb') as f:
@@ -139,7 +142,7 @@ class QBAgent:
                         self.QBClient.torrents_delete(hashes=t['hash'], deleteFiles=True)
 
         if self.auto_quota:
-            torrents = self.QBClient.torrents_info(status_filter='all', SIMPLE_RESPONSES=True)
+            torrents = self.QBClient.torrents_info(status_filter='all', SIMPLE_RESPONSES=True)1
             for torrent in torrents:
                 self.quota = self.quota + torrent['completed']
 
@@ -201,7 +204,6 @@ def run(Agent,PT,db):
                 if added is False:
                     for a in Agent:
                         a.purge(db)
-
 f = open('config.json')
 config = f.read()
 f.close()
@@ -228,8 +230,11 @@ for c in config['node']:
 # 带宽容量 bandwidth 默认值 10 <= 假定跑满带宽为10MB/s,这个选项用于判断队列满的程度.
 Agent = list()
 for c in config['server']:
-    Agent.append(QBAgent(destination=c['destination'],port=c['port'],username=c['username'],password=c['password'],quota=c['quota'],resevred=c['resevred'],bandwidth=c['bandwidth']))
-
+    try:
+        a = QBAgent(destination=c['destination'],port=c['port'],username=c['username'],password=c['password'],quota=c['quota'],resevred=c['resevred'],bandwidth=c['bandwidth'])
+        Agent.append(a)
+    except qbittorrentapi.exceptions.APIConnectionError:
+        pass
 while True:
     try:
         # 主程序
