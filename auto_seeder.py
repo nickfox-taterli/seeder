@@ -10,8 +10,8 @@ import func_timeout
 import honeybadger
 
 class QBAgent:
-    def __init__(self, destination='127.0.0.1', port=8080, username='admin', password='adminadmin', quota=0,
-                 resevred=5.0, bandwidth=10):
+    def __init__(self, remark='未命名主机',destination='127.0.0.1', port=8080, username='admin', password='adminadmin', quota=0,
+                 reserved=5.0, bandwidth=10):
 
         self.QBClient = qbittorrentapi.Client(host=destination + ':' + str(port), username=username, password=password)
         self.QBClient.auth_log_in()
@@ -25,8 +25,9 @@ class QBAgent:
         self.up_info_speed = 0
         self.dl_info_speed = 0
         self.disk_latency = 0
-        self.resevred = resevred
+        self.reserved = reserved
         self.bandwidth = bandwidth
+        self.remark = remark
 
         self.auto_quota = False
 
@@ -41,7 +42,7 @@ class QBAgent:
             self.quota = (self.quota + server_state['free_space_on_disk']) * 0.95
             self.quota = round(self.quota / 1024 / 1024 / 1024, 2)
             self.auto_quota = True
-            print('[' + self.destination + ']自动计算全盘空间:' + str(self.quota) + ' GB')
+            print('[' + self.remark + ']自动计算全盘空间:' + str(self.quota) + ' GB')
 
     def query(self):
 
@@ -75,7 +76,7 @@ class QBAgent:
         self.disk_latency = server_state['average_time_queue']
 
         print('[%s]当前磁盘空间余量 %.2f GB[%.2f GB],上传总量 %.2f GB,下传总量 %.2f GB,上传速度 %.2f MB/s,下载速度 %.2f MB/s,磁盘延迟 %d ms.' % (
-            self.destination, self.free_space_on_task, self.free_space_on_disk, self.alltime_ul, self.alltime_dl,
+            self.remark, self.free_space_on_task, self.free_space_on_disk, self.alltime_ul, self.alltime_dl,
             self.up_info_speed, self.dl_info_speed, self.disk_latency))
 
         #如果出现严重的意外,比如磁盘突发为0B实际空间,强制执行清理以便纠正.(如果经常发生,则可能有其他BUG)
@@ -87,7 +88,7 @@ class QBAgent:
     def add(self, torrent_name, torrent_size, urls, category):
         if int(torrent_size) < (self.free_space_on_task * 1024 * 1024 * 1024) and self.dl_info_speed < (
                 self.bandwidth / 2):
-            print('[' + self.destination + ']添加种子:' + torrent_name)
+            print('[' + self.remark + ']添加种子:' + torrent_name)
             self.QBClient.torrents_add(urls=urls, category=category, save_path='/downloads/')
             return True
         else:
@@ -103,13 +104,13 @@ class QBAgent:
 
         self.free_space_on_task = round(total_size / 1024 / 1024 / 1024, 2)
 
-        if self.free_space_on_task < self.resevred:
+        if self.free_space_on_task < self.reserved:
             for t in torrents:
                 if t['progress'] == 1 and t['dlspeed'] == 0 and t['upspeed'] == 0:
                     # 提取hash来查询文件,并把查询结果塞到seeder的队列里面.
                     cursor = db['agent'].find_one({"id": t['hash']})
                     if cursor is not None:
-                        print('[' + self.destination + ']请求下载:' + cursor['title'])
+                        print('[' + self.remark + ']请求下载:' + cursor['title'])
                         r = requests.get(cursor['links'][1]['href'])
                         if r.status_code == 200:
                             with open('/tmp/temp.torrent', 'wb') as f:
@@ -118,7 +119,7 @@ class QBAgent:
                             from lib import torrent
                             f = torrent.File('/tmp/temp.torrent')
 
-                            print('[' + self.destination + ']添加种子:' + f.name)
+                            print('[' + self.remark + ']添加种子:' + f.name)
 
                             record = db['seeder'].find_one({"file_hash": bson.Binary(pickle.dumps(f.file_hash))})
                             if record is None:
@@ -142,7 +143,7 @@ class QBAgent:
                         self.QBClient.torrents_delete(hashes=t['hash'], deleteFiles=True)
 
         if self.auto_quota:
-            torrents = self.QBClient.torrents_info(status_filter='all', SIMPLE_RESPONSES=True)1
+            torrents = self.QBClient.torrents_info(status_filter='all', SIMPLE_RESPONSES=True)
             for torrent in torrents:
                 self.quota = self.quota + torrent['completed']
 
@@ -150,9 +151,9 @@ class QBAgent:
             server_state = sync_maindata['server_state']
             self.quota = (self.quota + server_state['free_space_on_disk']) * 0.95
             self.quota = round(self.quota / 1024 / 1024 / 1024, 2)
-            print('[' + self.destination + ']自动计算全盘空间:' + str(self.quota) + ' GB')
+            print('[' + self.remark + ']自动计算全盘空间:' + str(self.quota) + ' GB')
 
-        print('[' + self.destination + ']自动清理完成')
+        print('[' + self.remark + ']自动清理完成')
 
 
 class PTSource:
@@ -226,13 +227,14 @@ for c in config['node']:
 # 用户名 username 默认值 'admin'
 # 密码 password 默认值 'adminadmin'
 # 容量 quota 默认值 0 <= 当为0则自动使用全盘刷PT,否则请设置合理阈值.单位GB.
-# 低容量阈值 resevred 默认值 1.0 <= 当容量低于这个数值时候,会进行磁盘清理.
+# 低容量阈值 reserved 默认值 1.0 <= 当容量低于这个数值时候,会进行磁盘清理.
 # 带宽容量 bandwidth 默认值 10 <= 假定跑满带宽为10MB/s,这个选项用于判断队列满的程度.
 Agent = list()
 for c in config['server']:
     try:
-        a = QBAgent(destination=c['destination'],port=c['port'],username=c['username'],password=c['password'],quota=c['quota'],resevred=c['resevred'],bandwidth=c['bandwidth'])
-        Agent.append(a)
+        if c['disable'] is False:
+            a = QBAgent(remark=c['remark'],destination=c['destination'],port=c['port'],username=c['username'],password=c['password'],quota=c['quota'],reserved=c['reserved'],bandwidth=c['bandwidth'])
+            Agent.append(a)
     except qbittorrentapi.exceptions.APIConnectionError:
         pass
 while True:
@@ -243,3 +245,5 @@ while True:
         requests.get(config['debug']['check_in'])
     except func_timeout.exceptions.FunctionTimedOut:
         pass
+    except KeyboardInterrupt:
+        exit(0)

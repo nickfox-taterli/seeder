@@ -29,7 +29,9 @@
             "quota": 0,
             "resevred": 1.0,
             "port": 8080,
-            "bandwidth": 10
+	    "remark":"TheStack",
+            "bandwidth": 10,
+	    "disable":true
         },
         {
             "destination": "198.46.158.33",
@@ -38,7 +40,9 @@
             "quota": 0,
             "resevred": 1.0,
             "port": 8080,
-            "bandwidth": 10
+	    "remark":"Hostsailor",
+            "bandwidth": 10,
+	    "disable":false
         },
         {
             "destination": "188.240.210.47",
@@ -47,7 +51,9 @@
             "quota": 0,
             "resevred": 1.0,
             "port": 8080,
-            "bandwidth": 10
+	    "remark":"Virtono",
+            "bandwidth": 10,
+	    "disable":true
         }
     ]
 }
