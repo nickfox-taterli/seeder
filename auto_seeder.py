@@ -109,7 +109,9 @@ class QBAgent:
                 status = self.QBClient.torrents_trackers(t['hash'], SIMPLE_RESPONSES=True)[3]['status']
                 if status != 2 and status != 3:
                     self.QBClient.torrents_delete(hashes=t['hash'], deleteFiles=True)
-
+                # 七天以前的种子,就算热门也不会持续很久了,删掉吧.
+                elif (time.time() - t['added_on']) > 604800:
+                    self.QBClient.torrents_delete(hashes=t['hash'], deleteFiles=True)
                 elif t['progress'] == 1 and t['dlspeed'] == 0 and t['upspeed'] == 0:
                     # 提取hash来查询文件,并把查询结果塞到seeder的队列里面.
                     cursor = db['agent'].find_one({"id": t['hash']})
