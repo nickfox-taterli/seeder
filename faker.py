@@ -23,7 +23,7 @@ cursor = collection.find({})
 
 for document in cursor:
     f = torrent.FileCache(document['announce'], pickle.loads(document["file_hash"]))
-    s = torrent.Seeder(f, 49152, 'qB4250', 'qBittorrent/4.2.5')
+    s = torrent.Seeder(f, config['faker']['port'], config['faker']['peer_id'], config['faker']['user_agent'])
     seeders.append(s)
 
 p = multiprocessing.Pool(processes=16)
