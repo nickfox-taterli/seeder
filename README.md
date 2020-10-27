@@ -49,3 +49,14 @@ python3 faker.py
 - P.S.
 ### 注册Mongodb Altas 和 HoneyBadger 获得API_KEY笔记
 ![](https://raw.githubusercontent.com/hongwenjun/seeder/master/img/mongodb_honey.png)
+
+### Python 3.7 运行环境
+```
+#  安装pip3 和更新 pip3 工具
+apt install python3-pip
+pip3 install --upgrade pip
+
+#  安装所需的 py库
+pip3 install dnspython bson feedparser qbittorrent-api pymongo \
+     requests func_timeout honeybadger
+```
