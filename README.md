@@ -45,3 +45,7 @@ python3 auto_seeder.py
 ```shell
 python3 faker.py
 ```
+
+- P.S.
+### 注册Mongodb Altas 和 HoneyBadger 获得API_KEY笔记
+![](https://raw.githubusercontent.com/hongwenjun/seeder/master/img/mongodb_honey.png)
