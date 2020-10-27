@@ -255,8 +255,6 @@ while True:
         run(Agent, PT, db)
         # 告知监控我还活着!
         requests.get(config['debug']['check_in'])
-        if error_rate != 0:
-            error_rate = error_rate - 1
     except func_timeout.exceptions.FunctionTimedOut:
         pass
     except qbittorrentapi.exceptions.APIError:
