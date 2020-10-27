@@ -177,6 +177,7 @@ class PTSource:
             exit(0)
         except :
             print('PT站数据源出现了临时错误,若此提示长时间不消失,则可能是PT站数据源配置问题.')
+            return None
             
         return torrents['entries']
 
