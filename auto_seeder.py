@@ -1,5 +1,6 @@
 import bson
 import json
+import time
 import datetime
 import feedparser
 import qbittorrentapi
@@ -109,9 +110,6 @@ class QBAgent:
                 status = self.QBClient.torrents_trackers(t['hash'], SIMPLE_RESPONSES=True)[3]['status']
                 if status != 2 and status != 3:
                     self.QBClient.torrents_delete(hashes=t['hash'], deleteFiles=True)
-                # 七天以前的种子,就算热门也不会持续很久了,删掉吧.
-                elif (time.time() - t['added_on']) > 604800:
-                    self.QBClient.torrents_delete(hashes=t['hash'], deleteFiles=True)
                 elif t['progress'] == 1 and t['dlspeed'] == 0 and t['upspeed'] == 0:
                     # 提取hash来查询文件,并把查询结果塞到seeder的队列里面.
                     cursor = db['agent'].find_one({"id": t['hash']})
@@ -143,6 +141,9 @@ class QBAgent:
                                 }})
 
                     self.QBClient.torrents_delete(hashes=t['hash'], deleteFiles=True)
+                elif (time.time() - t['added_on']) > 604800:
+                    # 存活大于7天的种子(就算有人下载,也不会多到那里去.)
+                    self.QBClient.torrents_delete(hashes=t['hash'], deleteFiles=True)
                 else:
                     msg = self.QBClient.torrents_trackers(t['hash'], SIMPLE_RESPONSES=True)[3]['msg']
                     if 'torrent not registered' in msg:
@@ -163,15 +164,20 @@ class QBAgent:
 
 
 class PTSource:
-    def __init__(self, source, passkey, limit=1):
+    def __init__(self, source, passkey, limit=1 ):
         self.source = source
         self.passkey = passkey
         self.limit = str(limit)
 
     def check(self):
-        torrents = feedparser.parse(
-            'https://' + self.source + '/torrentrss.php?rows=' + self.limit + '&linktype=dl&passkey=' + self.passkey)
-
+        try:
+            torrents = feedparser.parse(
+                'https://' + self.source + '/torrentrss.php?rows=' + self.limit + '&linktype=dl&passkey=' + self.passkey)
+        except KeyboardInterrupt:
+            exit(0)
+        except :
+            print('PT站数据源出现了临时错误,若此提示长时间不消失,则可能是PT站数据源配置问题.')
+            
         return torrents['entries']
 
     def name(self):
@@ -249,7 +255,11 @@ while True:
         run(Agent, PT, db)
         # 告知监控我还活着!
         requests.get(config['debug']['check_in'])
+        if error_rate != 0:
+            error_rate = error_rate - 1
     except func_timeout.exceptions.FunctionTimedOut:
         pass
+    except qbittorrentapi.exceptions.APIError:
+        print('PT站数据出现问题!')
     except KeyboardInterrupt:
         exit(0)
