@@ -28,3 +28,20 @@
 **由于我懒得写文档,所以,如果有不理解不明白的也不会解释.**
 
 **编辑config.json文件可完成配置,docker不推荐使用6881端口,Mongodb Altas和HoneyBadger请自行注册,check_in为HoneyBadger的在线检查链接,其他懒得解释了.**
+
+### 运行方法
+
+会自动重启的运行方法(如果发生不可修复错误,将会一直处于错误中无法解决,用户可能也无法知道已经出错):
+```shell
+while true;do python3 auto_seeder.py;done
+```
+
+单次执行(若用户配置了honeybadger的提醒,则出现程序死掉时候可以上来看看,可能的故障比如VPS超流量了,PT站临时维护等等.):
+```shell
+python3 auto_seeder.py
+```
+
+执行作弊脚本(需要先运行一段时间auto_seeder.py生成部分有效数据,作弊很容易被抓住,谨慎而为.):
+```shell
+python3 faker.py
+```
