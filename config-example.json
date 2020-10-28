@@ -1,0 +1,61 @@
+{
+  "dbserver": "mongodb+srv://admin:adminadmin@cluster0.3cyul.mongodb.net/default", // 用于数据储存
+  "debug": {
+    "check": "e3514996", // 用于捕获错误
+    "check_in": "https://api.honeybadger.io/v1/check_in/vCAAxP" // 用于离线提醒
+  },
+  "faker": {
+    "peer_id": "qB4250", // 统一模仿这个客户端ID
+    "user_agent": "qBittorrent/4.2.5", // 客户端标识
+    "port": 10808 // 客户端端口
+  },
+  "node": [
+    {
+      "source": "leaguehd.com", // PT站订阅服务器主域
+      "passkey": "58fd0980000000000000000000000000" // PT站生成的Passkey
+    },
+    {
+      "source": "www.haidan.video",
+      "passkey": "58fd0980000000000000000000000000"
+    },
+    {
+      "source": "www.nicept.net",
+      "passkey": "58fd0980000000000000000000000000"
+    }
+  ],
+  "server": [
+    {
+      "destination": "198.46.1.1", //服务器IP本身
+      "username": "admin",    //QB登录用户名
+      "password": "adminadmin", //QB登录密码
+      "quota": 0, // 可用磁盘大小(GB),设置为0则使用全盘,设置超过本身磁盘大小可以超量添加种子.
+      "reserved": 1.0, // 保留大小(GB),当剩余空间下降到这个阈值,会在合适的时候触发清理.
+      "port": 8080, // QB端口
+      "bandwidth": 10, // 服务器网速(MB/s),为了防止封号可以把这个设置低一些
+      "remark":"Virmach", // 容易记的名字,用来自己看.
+      "disable":true // 设置为true则跳过这个服务器,设置为false就启用这个服务器,当服务器超流量或者各种原因不能用建议临时禁用这个服务器.
+    },
+    {
+      "destination": "5.39.1.1",
+      "username": "admin",
+      "password": "adminadmin",
+      "quota": 0,
+      "reserved": 1.0,
+      "port": 8080,
+      "bandwidth": 10,
+      "remark":"Kimsufi",
+      "disable":true
+    },
+    {
+      "destination": "185.82.1.1",
+      "username": "admin",
+      "password": "adminadmin",
+      "quota": 0,
+      "reserved": 1.0,
+      "port": 8080,
+      "remark":"Hostsailor",
+      "bandwidth": 10,
+      "disable":true
+    }
+  ]
+}
