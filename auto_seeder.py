@@ -170,13 +170,16 @@ class PTSource:
         self.limit = str(limit)
 
     def check(self):
-        try:
-            torrents = feedparser.parse(
-                'https://' + self.source + '/torrentrss.php?rows=' + self.limit + '&linktype=dl&passkey=' + self.passkey)
-        except KeyboardInterrupt:
-            exit(0)
-        except :
-            print('PT站数据源出现了临时错误,若此提示长时间不消失,则可能是PT站数据源配置问题.')
+        while True:
+            try:
+                torrents = feedparser.parse(
+                    'https://' + self.source + '/torrentrss.php?rows=' + self.limit + '&linktype=dl&passkey=' + self.passkey)
+                break
+            except KeyboardInterrupt:
+                exit(0)
+            except :
+                print('PT站数据源出现了临时错误,若此提示长时间不消失,则可能是PT站数据源配置问题.')
+                time.sleep(1)
             
         return torrents['entries']
 
