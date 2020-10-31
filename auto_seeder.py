@@ -106,6 +106,7 @@ class QBAgent:
         self.free_space_on_task = round(total_size / 1024 / 1024 / 1024, 2)
 
         if self.free_space_on_task < self.reserved:
+            error_rate = 0
             for t in torrents:
                 status = self.QBClient.torrents_trackers(t['hash'], SIMPLE_RESPONSES=True)[3]['status']
                 if status != 2 and status != 3:
@@ -115,7 +116,14 @@ class QBAgent:
                     cursor = db['agent'].find_one({"id": t['hash']})
                     if cursor is not None:
                         print('[' + self.remark + ']请求下载:' + cursor['title'])
-                        r = requests.get(cursor['links'][1]['href'])
+                        try:
+                            r = requests.get(cursor['links'][1]['href'])
+                        except requests.exceptions.ConnectionError:
+                            # 偶尔错误可以忽略
+                            if error_rate == 0
+                                break
+                            else:
+                                raise RuntimeError('数据源出错:' + cursor['links'][1]['href'] + ',若不及时处理,可能引发大规模故障.')
                         if r.status_code == 200:
                             with open('/tmp/temp.torrent', 'wb') as f:
                                 f.write(r.content)
@@ -257,7 +265,11 @@ while True:
         # 主程序
         run(Agent, PT, db)
         # 告知监控我还活着!
-        requests.get(config['debug']['check_in'])
+        try:
+            requests.get(config['debug']['check_in'])
+        except requests.exceptions.ConnectionError:
+            # 临时的访问失败,不会造成什么严重后果.
+            break
     except func_timeout.exceptions.FunctionTimedOut:
         pass
     except qbittorrentapi.exceptions.APIError:
