@@ -120,8 +120,8 @@ class QBAgent:
                             r = requests.get(cursor['links'][1]['href'])
                         except requests.exceptions.ConnectionError:
                             # 偶尔错误可以忽略
-                            if error_rate == 0
-                                break
+                            if error_rate == 0:
+                                error_rate = error_rate + 1
                             else:
                                 raise RuntimeError('数据源出错:' + cursor['links'][1]['href'] + ',若不及时处理,可能引发大规模故障.')
                         if r.status_code == 200:
