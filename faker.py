@@ -16,33 +16,38 @@ honeybadger.honeybadger.configure(api_key=config['debug']['check'])
 client = pymongo.MongoClient(
     config['dbserver'])
 db = client.torrent
-collection = db['seeder']
+collection = db['agent']
 
 seeders = list()
-cursor = collection.find({})
+cursor = collection.find({"finished": True})
 
 for document in cursor:
-    f = torrent.FileCache(document['announce'], pickle.loads(document["file_hash"]))
-    s = torrent.Seeder(f, config['faker']['port'], config['faker']['peer_id'], config['faker']['user_agent'])
-    seeders.append(s)
+    try:
+        f = torrent.FileCache(document['torrent_announce'],bytes.fromhex(document['torrent_hash']))
+        s = torrent.Seeder(f, config['faker']['port'], config['faker']['peer_id'], config['faker']['user_agent'])
+        seeders.append(s)
+    except:
+        pass
 
 p = multiprocessing.Pool(processes=16)
 for seeder in seeders:
     p.apply_async(seeder.start)
 p.close()
 p.join()
-
+ 
 # for seeder in seeders:
 #     seeder.start()
+try:
+    while True:
+        time.sleep(900)
+        # 能适配大多数PT站的配置!
+        p = multiprocessing.Pool(processes=16)
+        for seeder in seeders:
+            p.apply_async(seeder.heartbeat)
+        p.close()
+        p.join()
 
-while True:
-    time.sleep(900)
-    # 能适配大多数PT站的配置!
-    p = multiprocessing.Pool(processes=16)
-    for seeder in seeders:
-        p.apply_async(seeder.heartbeat)
-    p.close()
-    p.join()
-
-    # for seeder in seeders:
-    #     seeder.heartbeat()
+        # for seeder in seeders:
+        #     seeder.heartbeat()
+except KeyboardInterrupt:
+    exit(0)

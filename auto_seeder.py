@@ -106,48 +106,18 @@ class QBAgent:
         self.free_space_on_task = round(total_size / 1024 / 1024 / 1024, 2)
 
         if self.free_space_on_task < self.reserved:
-            error_rate = 0
             for t in torrents:
                 status = self.QBClient.torrents_trackers(t['hash'], SIMPLE_RESPONSES=True)[3]['status']
                 if status != 2 and status != 3:
                     self.QBClient.torrents_delete(hashes=t['hash'], deleteFiles=True)
                 elif t['progress'] == 1 and t['dlspeed'] == 0 and t['upspeed'] == 0:
                     # 提取hash来查询文件,并把查询结果塞到seeder的队列里面.
-                    cursor = db['agent'].find_one({"id": t['hash']})
+                    cursor = db['agent'].find_one({"torrent_hash": t['hash']})
                     if cursor is not None:
-                        print('[' + self.remark + ']请求下载:' + cursor['title'])
-                        try:
-                            r = requests.get(cursor['links'][1]['href'])
-                        except requests.exceptions.ConnectionError:
-                            # 偶尔错误可以忽略
-                            if error_rate == 0:
-                                error_rate = error_rate + 1
-                                break
-                            else:
-                                raise RuntimeError('数据源出错:' + cursor['links'][1]['href'] + ',若不及时处理,可能引发大规模故障.')
-                        if r.status_code == 200:
-                            with open('/tmp/temp.torrent', 'wb') as f:
-                                f.write(r.content)
-
-                            from lib import torrent
-                            f = torrent.File('/tmp/temp.torrent')
-
-                            print('[' + self.remark + ']添加种子:' + f.name)
-
-                            record = db['seeder'].find_one({"file_hash": bson.Binary(pickle.dumps(f.file_hash))})
-                            if record is None:
-                                r = db['seeder'].insert_one({
-                                    "name": f.name,
-                                    "announce": f.announce,
-                                    "file_hash": bson.Binary(pickle.dumps(f.file_hash)),
-                                    "last_modified": datetime.datetime.now()
-                                })
-                            else:
-                                r = db['seeder'].update_one({"file_hash": bson.Binary(pickle.dumps(f.file_hash))}, {"$set": {
-                                    "name": f.name,
-                                    "announce": f.announce,
-                                    "last_modified": datetime.datetime.now()
-                                }})
+                        print('[主程序]标记完成:' + cursor['title'])
+                        db['agent'].update_one({"torrent_hash": t['hash']}, {"$set": {
+                            "finished": True
+                        }})
 
                     self.QBClient.torrents_delete(hashes=t['hash'], deleteFiles=True)
                 elif (time.time() - t['added_on']) > 604800:
@@ -203,32 +173,65 @@ def run(Agent,PT,db):
     print('==================================================')
 
     for p in PT:
-        for torrent in p.check():
+        for torrent_rss in p.check():
             # 如果出现RSS错误,则暂时忽略
             try:
-                torrent_title = torrent['title']
-                torrent_id = torrent['id']
-                torrent_size = torrent['links'][1]['length']
+                torrent_title = torrent_rss['title']
+                torrent_id = torrent_rss['id']
+                torrent_size = torrent_rss['links'][1]['length']
             except:
                 break
 
-            cursor = db['agent'].find_one({'id': torrent_id})
+            cursor = db['agent'].find_one({'torrent_hash': torrent_id})
             if cursor is None:
-                db['agent'].insert_one(torrent)
-
-                # 设置当种子大于某个大小,则自动忽略,这里定义为40GB.
-                # 这一类种子通常占用大量的硬盘,而且没什么上传量,如果硬盘大,可以适当放宽.
-                if int(torrent_size) > 40 * 1024 * 1024 * 1024:
+                print('[主程序]请求下载:' + torrent_rss['title'])
+                try:
+                    r = requests.get(torrent_rss['links'][1]['href'])
+                except requests.exceptions.ConnectionError:
                     break
 
-                added = False
-                for a in Agent:
-                    if a.add(torrent_title, torrent_size, torrent['links'][1]['href'], p.name()):
-                        added = True
+                if r.status_code == 200:
+                    with open('/tmp/temp.torrent', 'wb') as f:
+                        f.write(r.content)
+
+                    from lib import torrent
+                    f = torrent.File('/tmp/temp.torrent')
+
+                    print('[主程序]添加种子:' + f.name)
+
+                    if torrent_id == f.file_hash.hex():
+                        print('[主程序]种子校验正确!')
+                    else:
+                        print('[主程序]种子校验失败!')
                         break
-                if added is False:
+
+                    torrent_dict = {
+                        "title": f.name,
+                        "torrent_hash" : f.file_hash.hex(),
+                        "torrent_announce":f.announce,
+                        "create_time" : datetime.datetime.now(),
+                        "finished":False
+                    }
+                    db['agent'].insert_one(torrent_dict)
+
+                    # 设置当种子大于某个大小,则自动忽略,这里定义为40GB.
+                    # 这一类种子通常占用大量的硬盘,而且没什么上传量,如果硬盘大,可以适当放宽.
+                    if int(torrent_size) > 40 * 1024 * 1024 * 1024:
+                        break
+
+                    added = False
                     for a in Agent:
-                        a.purge(db)
+                        if a.add(torrent_title, torrent_size, torrent_rss['links'][1]['href'], p.name()):
+                            added = True
+                            break
+                    if added is False:
+                        for a in Agent:
+                            a.purge(db)
+                            # 清理后可能就有空间了.
+                            for a in Agent:
+                                if a.add(torrent_title, torrent_size, torrent_rss['links'][1]['href'], p.name()):
+                                    added = True
+                                    break
 f = open('config.json')
 config = f.read()
 f.close()

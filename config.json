@@ -9,7 +9,8 @@
         "user_agent": "qBittorrent/4.1.7.1",
         "port": 6881
     },
-    "node": [{
+    "node": [
+        {
             "source": "leaguehd.com",
             "passkey": "21232f297a57a5a743894a0e4a801fc3"
         },
@@ -22,16 +23,17 @@
             "passkey": "21232f297a57a5a743894a0e4a801fc3"
         }
     ],
-    "server": [{
+    "server": [
+        {
             "destination": "89.40.10.157",
             "username": "admin",
             "password": "adminadmin",
             "quota": 0,
             "reserved": 1.0,
             "port": 8080,
-	    "remark":"TheStack",
+            "remark": "TheStack",
             "bandwidth": 10,
-	    "disable":true
+            "disable": true
         },
         {
             "destination": "198.46.158.33",
@@ -40,9 +42,9 @@
             "quota": 0,
             "reserved": 1.0,
             "port": 8080,
-	    "remark":"Hostsailor",
+            "remark": "Hostsailor",
             "bandwidth": 10,
-	    "disable":false
+            "disable": false
         },
         {
             "destination": "188.240.210.47",
@@ -51,9 +53,9 @@
             "quota": 0,
             "reserved": 1.0,
             "port": 8080,
-	    "remark":"Virtono",
+            "remark": "Virtono",
             "bandwidth": 10,
-	    "disable":true
+            "disable": true
         }
     ]
 }
