@@ -26,6 +26,7 @@ class QBAgent:
         self.reserved = reserved
         self.bandwidth = bandwidth
         self.remark = remark
+        self.port = port
 
         try:
             requests.get('http://' + self.destination + ':' + str(self.port),timeout=1)
