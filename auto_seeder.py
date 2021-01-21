@@ -13,10 +13,7 @@ import honeybadger
 class QBAgent:
     def __init__(self, remark='未命名主机',destination='127.0.0.1', port=8080, username='admin', password='adminadmin', quota=0,
                  reserved=5.0, bandwidth=10):
-
-        self.QBClient = qbittorrentapi.Client(host=destination + ':' + str(port), username=username, password=password)
-        self.QBClient.auth_log_in()
-
+        
         self.destination = destination
         self.quota = quota
         self.free_space_on_disk = 0
@@ -29,6 +26,14 @@ class QBAgent:
         self.reserved = reserved
         self.bandwidth = bandwidth
         self.remark = remark
+
+        try:
+            requests.get('http://' + self.destination + ':' + str(self.port),timeout=1)
+        except:
+            return 
+
+        self.QBClient = qbittorrentapi.Client(host=destination + ':' + str(port), username=username, password=password)
+        self.QBClient.auth_log_in()
 
         self.auto_quota = False
 
@@ -46,6 +51,11 @@ class QBAgent:
             print('[' + self.remark + ']自动计算全盘空间:' + str(self.quota) + ' GB')
 
     def query(self):
+
+        try:
+            requests.get('http://' + self.destination + ':' + str(self.port),timeout=1)
+        except:
+            return 
 
         torrents = self.QBClient.torrents_info(status_filter='all', SIMPLE_RESPONSES=True)
 
@@ -87,6 +97,11 @@ class QBAgent:
                 self.QBClient.torrents_delete(hashes=t['hash'], deleteFiles=True)
 
     def add(self, torrent_name, torrent_size, urls, category):
+        try:
+            requests.get('http://' + self.destination + ':' + str(self.port),timeout=1)
+        except:
+            return 
+
         if int(torrent_size) < (self.free_space_on_task * 1024 * 1024 * 1024) and self.dl_info_speed < (
                 self.bandwidth / 2):
             print('[' + self.remark + ']添加种子:' + torrent_name)
@@ -96,6 +111,10 @@ class QBAgent:
             return False
 
     def purge(self,db):
+        try:
+            requests.get('http://' + self.destination + ':' + str(self.port),timeout=1)
+        except:
+            return 
 
         torrents = self.QBClient.torrents_info(status_filter='all', SIMPLE_RESPONSES=True)
 
