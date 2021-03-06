@@ -103,7 +103,7 @@ class QBAgent:
         except:
             return 
 
-        if int(torrent_size) < (self.free_space_on_task * 1024 * 1024 * 1024) and self.dl_info_speed < (
+        if int(torrent_size) < (self.free_space_on_disk * 1024 * 1024 * 1024) and self.dl_info_speed < (
                 self.bandwidth / 2):
             print('[' + self.remark + ']添加种子:' + torrent_name)
             self.QBClient.torrents_add(urls=urls, category=category, save_path='/downloads/')
@@ -119,17 +119,18 @@ class QBAgent:
 
         torrents = self.QBClient.torrents_info(status_filter='all', SIMPLE_RESPONSES=True)
 
-        total_size = (self.quota) * 1024 * 1024 * 1024
-        for t in torrents:
-            total_size = total_size - t['size']
+        # total_size = (self.quota) * 1024 * 1024 * 1024
+        # for t in torrents:
+        #     total_size = total_size - t['size']
 
-        self.free_space_on_task = round(total_size / 1024 / 1024 / 1024, 2)
+        # self.free_space_on_disk = round(total_size / 1024 / 1024 / 1024, 2)
 
-        if self.free_space_on_task < self.reserved:
+        if self.free_space_on_disk < self.reserved:
             for t in torrents:
                 status = self.QBClient.torrents_trackers(t['hash'], SIMPLE_RESPONSES=True)[3]['status']
                 if status != 2 and status != 3:
                     self.QBClient.torrents_delete(hashes=t['hash'], deleteFiles=True)
+                    break
                 elif t['progress'] == 1 and t['dlspeed'] == 0 and t['upspeed'] == 0:
                     # 提取hash来查询文件,并把查询结果塞到seeder的队列里面.
                     cursor = db['agent'].find_one({"torrent_hash": t['hash']})
@@ -140,13 +141,16 @@ class QBAgent:
                         }})
 
                     self.QBClient.torrents_delete(hashes=t['hash'], deleteFiles=True)
+                    break
                 elif (time.time() - t['added_on']) > 604800:
                     # 存活大于7天的种子(就算有人下载,也不会多到那里去.)
                     self.QBClient.torrents_delete(hashes=t['hash'], deleteFiles=True)
+                    break
                 else:
                     msg = self.QBClient.torrents_trackers(t['hash'], SIMPLE_RESPONSES=True)[3]['msg']
                     if 'torrent not registered' in msg:
                         self.QBClient.torrents_delete(hashes=t['hash'], deleteFiles=True)
+                        break
 
         if self.auto_quota:
             torrents = self.QBClient.torrents_info(status_filter='all', SIMPLE_RESPONSES=True)
@@ -232,11 +236,10 @@ def run(Agent,PT,db):
                         "create_time" : datetime.datetime.now(),
                         "finished":False
                     }
-                    db['agent'].insert_one(torrent_dict)
 
-                    # 设置当种子大于某个大小,则自动忽略,这里定义为40GB.
+                    # 设置当种子大于某个大小,则自动忽略,这里定义为1024GB.
                     # 这一类种子通常占用大量的硬盘,而且没什么上传量,如果硬盘大,可以适当放宽.
-                    if int(torrent_size) > 40 * 1024 * 1024 * 1024:
+                    if int(torrent_size) > 1024 * 1024 * 1024 * 1024:
                         break
 
                     added = False
@@ -252,6 +255,10 @@ def run(Agent,PT,db):
                                 if a.add(torrent_title, torrent_size, torrent_rss['links'][1]['href'], p.name()):
                                     added = True
                                     break
+
+                    if added is True:
+                        db['agent'].insert_one(torrent_dict)
+                        
 f = open('config.json')
 config = f.read()
 f.close()
@@ -300,3 +307,4 @@ while True:
         print('PT站数据出现问题!')
     except KeyboardInterrupt:
         exit(0)
+
